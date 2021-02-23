@@ -1,0 +1,54 @@
+<resources>
+    <string name="app_name">AccuraEmirates</string>
+
+    <!-- message for the dialog showing the error of camera hardware -->
+    <string name="cannot_connect_camera">Can\'t connect to the camera.</string>
+
+    <!-- message for the dialog showing the camera is disabled because of security policies. Camera cannot be used. -->
+    <string name="camera_disabled">Camera has been disabled because of security policies.</string>
+
+
+    <string name="failed">Failed</string>
+    <string name="result">Result</string>
+
+
+    <string name="mrz">MRZ</string>
+    <string name="correct_mrz">Correct Mrz</string>
+    <string name="incorrect_mrz">Incorrect Mrz</string>
+    <string name="text_female">Female</string>
+    <string name="text_male">Male</string>
+
+    <string name="scantitle">Scan Front Side of the Document</string>
+    <string name="keepdocument">Keep Document In Frame</string>
+    <string name="tips">"Hold card here.\nIt will scan actomatically."</string>
+    <string name="united_arab_emirates">United Arab Emirates</string>
+
+    <string name="liveness_check">Liveness</string>
+    <string name="authentication">Authenticated</string>
+    <string name="glassesDecision">Glasses Decision</string>
+    <string name="glassesScore">Glsses Score</string>
+    <string name="livenessAuthFacemap">Liveness result for authentication facemap</string>
+    <string name="livenessEnrollFacemap">Liveness result for enrollment facemap</string>
+    <string name="livenessScore">Liveness score</string>
+    <string name="facematchScore">FaceMatch score</string>
+    <string name="LivenessAuthResultFacemap">liveness score for authentication facemap</string>
+    <string name="livenessEnrollResultFacemap">liveness score for enrollment facemap</string>
+    <string name="matchScore">match score</string>
+    <string name="retry">Retry</string>
+
+    <string name="accura_ocr">ACCURA OCR</string>
+    <string name="accura_ocr_desp"><![CDATA[Recognizes Passport & ID MRZ. Pan & Aadhaar Cards India, UAE ID and Malaysia Id card. Works Ofﬂine]]></string>
+    <string name="accura_face">ACCURA FACE MATCH</string>
+    <string name="accura_face_desp"><![CDATA[AI & ML Based Powerful Face Detection & Recognition Solution. 1:1 and 1:N. Works Ofﬂine]]></string>
+    <string name="accura_upload">Upload Face Image</string>
+
+
+    <string name="text_result_bottom">Save document details and test it to retrieve the data back by using Face Match. Enter into a Password less World</string>
+    <string name="dialog_ok">Ok</string>
+    <string name="report">Report</string>
+    <string name="cancel">Cancel</string>
+    <string name="error">Error</string>
+    <string name="app_error_occurred">The app error occurred. You can send the report to developers.</string>
+    <string name="error_comment_prompt">You can add extra information and comments here:</string>
+
+</resources>

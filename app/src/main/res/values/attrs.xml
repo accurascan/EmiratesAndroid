@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <declare-styleable name="CustomTextView">
+        <attr name="typeface" />
+    </declare-styleable>
+
+    <attr name="typeface" format="enum">
+        <enum name="ALLER_STD" value="0" />
+        <enum name="ALLER_STD_BOLD" value="1" />
+        <enum name="ALLER_STD_ITALIC" value="2" />
+        <enum name="ALLER_STD_LIGHT" value="3" />
+        <enum name="ALLER_STD_LIGHT_ITALIC" value="4" />
+        <enum name="ALLER_STD_REG" value="5" />
+        <enum name="ALLER_STD_DISPLAY" value="6" />
+    </attr>
+
+    <declare-styleable name="dynamic_style_attrs">
+        <attr name="smallText" format="reference" />
+        <attr name="background" format="reference" />
+        <attr name="backgroundBlank" format="reference" />
+        <attr name="popupTheme" format="reference" />
+        <attr name="divider" format="reference" />
+        <attr name="defaultRectRipple" format="reference" />
+        <attr name="defaultRoundRipple" format="reference" />
+        <attr name="defaultSelectRect" format="reference" />
+        <attr name="curOpenTorrentIndicator" format="reference" />
+    </declare-styleable>
+</resources>

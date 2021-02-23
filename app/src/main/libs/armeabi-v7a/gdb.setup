@@ -1,0 +1,2 @@
+set solib-search-path ./obj/local/armeabi-v7a
+directory D:/DevTools/Android/android-ndk-r15c/build//../sysroot jni/..//jni D:/DevTools/Android/android-ndk-r15c/build//../sources/cxx-stl/llvm-libc++/include D:/DevTools/Android/android-ndk-r15c/build//../sources/cxx-stl/llvm-libc++abi/include D:/DevTools/Android/android-ndk-r15c/build//../sources/android/support/include jni/..//jni/engine jni/..//jni/engine/include
