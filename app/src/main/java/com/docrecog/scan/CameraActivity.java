@@ -394,7 +394,16 @@ public class CameraActivity extends Activity implements
         mPreviewFrame = findViewById(R.id.camera_preview);
 
         mPreviewFrame.setOnTouchListener(this);
-        SurfaceView preview = findViewById(R.id.camera_preview);
+        // initialize Surface View Which used to show Camera Preview
+        SurfaceView preview = (SurfaceView) findViewById(R.id.camera_preview);
+
+        // Set SurfaceView margin to reduce Blurriness.
+        RelativeLayout.LayoutParams params = new RelativeLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
+        int leftRightMargin = -(dm.widthPixels / 5);
+        int topBottomMargin = -((dm.heightPixels - titleBarHeight) / 5);
+        params.setMargins(leftRightMargin, topBottomMargin, leftRightMargin, topBottomMargin);
+        preview.setLayoutParams(params);
+
         SurfaceHolder holder = preview.getHolder();
         holder.addCallback(this);
         holder.setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
