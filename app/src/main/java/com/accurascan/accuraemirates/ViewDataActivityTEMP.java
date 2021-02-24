@@ -64,17 +64,10 @@ public class ViewDataActivityTEMP extends AppCompatActivity implements View.OnCl
     String mrzdata = "";
     private ImageView ivUserProfile;
     private ImageView ivUserProfile2;
-    private ImageView ivUserProfile3;
-    private TextView tvSave, tvFM, tvCancel, tvCancel1,
-            tvAuth, tvLivenessAuthFacemap, tvLivenessEnrollFacemap, tvLivenessScore, tvLivenessAuthResultFacemap,
-            tvLivenessEnrollResultFacemap, tvMatchScore, tvFaceMatchScore1, tvRetry;
-    private LinearLayout llFacemap, llLiveness, llFaceMatchScore;
-    private File imageFile;
-    private byte[] bytes;
-    private String sessionId;
+    private TextView tvFM, tvCancel, tvFaceMatchScore1;
+    private LinearLayout llFaceMatchScore;
 
     //custom
-    ImageView iv_holder_image;
     RecyclerView ry_cardresult;
     TableLayout mrz_table_layout, front_table_layout, back_table_layout, security_table_layout, barcode_table_layout;
     AccuraDemoApplication application = AccuraDemoApplication.getInstance();
@@ -161,12 +154,7 @@ public class ViewDataActivityTEMP extends AppCompatActivity implements View.OnCl
                                         if (key.toLowerCase().contains("face")) {
                                             try {
                                                 if (face1 == null) {
-                                                    face1 = ImageOpencv.getImage(value); //memory leak
-                                                }
-                                                if (DEBUG) { // TODO remove it
-                                                    if (face1 == null) {
-                                                        face1 = RecogEngine.g_recogResult.faceBitmap; //memory leak
-                                                    }
+                                                    face1 = ImageOpencv.getImage(value);
                                                 }
 
                                             } catch (Exception e) {
@@ -580,37 +568,16 @@ public class ViewDataActivityTEMP extends AppCompatActivity implements View.OnCl
         //initialize the UI
         ivUserProfile = findViewById(R.id.ivUserProfile);
         ivUserProfile2 = findViewById(R.id.ivUserProfile2);
-        ivUserProfile3 = findViewById(R.id.ivUserProfile3);
-        tvAuth = findViewById(R.id.tvAuth);
-        tvRetry = findViewById(R.id.tvRetry);
         tvFM = findViewById(R.id.tvFM);
         tvFaceMatchScore1 = findViewById(R.id.tvFaceMatchScore1);
-        tvLivenessAuthFacemap = findViewById(R.id.tvLivenessAuthFacemap);
-        tvLivenessEnrollFacemap = findViewById(R.id.tvLivenessEnrollFacemap);
-        tvLivenessScore = findViewById(R.id.tvLivenessScore);
-        tvLivenessAuthResultFacemap = findViewById(R.id.tvLivenessAuthResultFacemap);
-        tvLivenessEnrollResultFacemap = findViewById(R.id.tvLivenessEnrollResultFacemap);
-        tvMatchScore = findViewById(R.id.tvMatchScore);
-        tvSave = findViewById(R.id.tvSave);
         tvCancel = findViewById(R.id.tvCancel);
-        tvCancel1 = findViewById(R.id.tvCancel1);
 
-        llLiveness = findViewById(R.id.llLiveness);
         llFaceMatchScore = findViewById(R.id.llFaceMatchScore);
-        llFacemap = findViewById(R.id.llFacemap);
 
-        tvSave.setOnClickListener(this);
         tvCancel.setOnClickListener(this);
         tvFM.setOnClickListener(this);
-        tvCancel1.setOnClickListener(this);
-
-//        if (AccuraDemoApplication.getmMenuMode() == AccuraDemoApplication.MENU_MODE_OCR) {
-//        } else {
         tvFM.setVisibility(View.VISIBLE);
         tvCancel.setVisibility(View.VISIBLE);
-        tvCancel1.setVisibility(View.GONE);
-//        }
-        tvSave.setVisibility(View.GONE);
         //custom
         ly_back = findViewById(R.id.ly_back);
         ly_front = findViewById(R.id.ly_front);
@@ -665,11 +632,6 @@ public class ViewDataActivityTEMP extends AppCompatActivity implements View.OnCl
                 startActivityForResult(intent, CAPTURE_IMAGE);
                 break;
             case R.id.tvCancel:
-                tvCancel.setClickable(false);
-                tvCancel.setFocusable(false);
-                onBackPressed();
-                break;
-            case R.id.tvCancel1:
                 tvCancel.setClickable(false);
                 tvCancel.setFocusable(false);
                 onBackPressed();
@@ -959,6 +921,7 @@ public class ViewDataActivityTEMP extends AppCompatActivity implements View.OnCl
     public void onRightDetect(FaceDetectionResult faceResult) {
         if (faceResult != null) {
             rightResult = faceResult;
+            ivUserProfile2.setImageBitmap(faceResult.getFaceImage(face2));
         } else {
             rightResult = null;
         }
@@ -969,7 +932,6 @@ public class ViewDataActivityTEMP extends AppCompatActivity implements View.OnCl
     public void onExtractInit(int ret) {
     }
 
-    //Calculate Pan and Adhare facematch score
     public void calcMatch() {
         if (leftResult == null || rightResult == null) {
             match_score = 0.0f;
@@ -977,7 +939,7 @@ public class ViewDataActivityTEMP extends AppCompatActivity implements View.OnCl
             match_score = FaceLockHelper.Similarity(leftResult.getFeature(), rightResult.getFeature(), rightResult.getFeature().length);
             match_score *= 100.0f;
         }
-        tvFaceMatchScore1.setText(String.valueOf(match_score));
+        tvFaceMatchScore1.setText(String.format("%.2f %%", match_score));
         llFaceMatchScore.setVisibility(View.VISIBLE);
     }
 
@@ -1053,7 +1015,6 @@ public class ViewDataActivityTEMP extends AppCompatActivity implements View.OnCl
         setResult(RESULT_OK);
         super.onBackPressed();
     }
-    //mail OCR,FM and Liveness result
 
     private int pixelDiff(int rgb1, int rgb2) {
         int r1 = (rgb1 >> 16) & 0xff;

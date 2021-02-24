@@ -47,9 +47,13 @@ public class RecogEngine {
 
     public native int doFaceDetect(Bitmap bitmap, Bitmap faceBitmap, float[] fConf);
 
-    public native static ImageOpencv checkCardInFrames(long matTemplate, long matInput, long matOut, boolean doblurcheck);
+    public native static int doCheckData(byte[] yuvdata, int width, int height);
+
+    public native static ImageOpencv checkCardInFrames(long matInput, long matOut, boolean doblurcheck);
 
     private native static PrimaryData setPrimaryData(Context /* OCRCallback*/ context, AssetManager assetManager, String filepath, long l, String card_side, int card_pos);
+
+    public native int closeOCR(int i);
 
     public static float[] fConf = new float[1]; //face detection confidence
 
