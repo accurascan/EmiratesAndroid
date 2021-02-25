@@ -48,12 +48,6 @@
             android:name=".ViewDataActivityTEMP"
             android:screenOrientation="portrait"
             android:theme="@style/AppTheme" />
-        <activity
-            android:name=".FaceMatchActivity"
-            android:screenOrientation="portrait" />
-        <activity
-            android:name=".MenuActivity"
-            android:screenOrientation="portrait" />
 
         <provider
             android:name="androidx.core.content.FileProvider"

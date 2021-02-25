@@ -9,10 +9,6 @@ import android.widget.TextView;
 
 import com.accurascan.accuraemirates.R;
 
-
-/**
- * Created by qtm-Richa on 8/7/16.
- */
 public class CustomTextView extends TextView {
 
     /*

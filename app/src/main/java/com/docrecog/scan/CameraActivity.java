@@ -72,6 +72,7 @@ import com.accurascan.accuraemirates.ViewDataActivityTEMP;
 import com.accurascan.accuraemirates.camera.CameraHolder;
 import com.accurascan.accuraemirates.FocusManager;
 import com.accurascan.accuraemirates.FocusManager.Listener;
+import com.accurascan.accuraemirates.motiondetection.SensorsActivity;
 
 import org.opencv.android.Utils;
 import org.opencv.core.CvType;
@@ -86,17 +87,14 @@ import java.util.List;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
-import static com.accurascan.accuraemirates.BuildConfig.DEBUG;
-
 /*
- *   This class is used to scan Passport & ID MRZ
- *   And result will be display using ScanResultActivity.java class.
+ *   This class is used to scan Emiartes ID card
+ *   And result will be display using ViewDataActivityTemp.java class.
  *
  * */
 
-public class CameraActivity extends Activity implements
-        SurfaceHolder.Callback, Camera.PreviewCallback, Camera.ShutterCallback,
-        Camera.PictureCallback, Listener, OnTouchListener, View.OnClickListener, OCRCallback {
+public class CameraActivity extends SensorsActivity implements
+        SurfaceHolder.Callback, Camera.PreviewCallback, Listener, OnTouchListener, View.OnClickListener, OCRCallback {
 
     protected static final int IDLE = 0; // preview is active
     protected static final int SAVING_PICTURES = 5;
@@ -144,6 +142,10 @@ public class CameraActivity extends Activity implements
     FocusManager mFocusManager;
     int mPreviewWidth = 1280;//640;
     int mPreviewHeight = 720;//480;
+    private Camera.Size previewSize = null;
+    // Use Surface view to display camera frame
+    private SurfaceView preview;
+    private boolean isPreviewSet = false; // one time preview set
     /*private CheckBox chkRecogType;*/
     private byte[] cameraData;
     private Parameters mInitialParams;
@@ -199,7 +201,6 @@ public class CameraActivity extends Activity implements
     private boolean isback = false;
     private String cardside = "Front";
     private int cardpos = 0;
-    private int checkmrz = 0; //0 ideal 1 not require 2 require
     private int gotmrz = -1;
     private boolean isDone = false;
     private boolean isBackPressed = false;
@@ -351,7 +352,7 @@ public class CameraActivity extends Activity implements
             mCardScanner.initEngine(this, this);
         }
         mContext = this;
-        openCvHelper = new OpenCvHelper();
+        openCvHelper = new OpenCvHelper(this);
         //initialize the result value
         //{{{
         mRecCnt = 0;
@@ -395,14 +396,14 @@ public class CameraActivity extends Activity implements
 
         mPreviewFrame.setOnTouchListener(this);
         // initialize Surface View Which used to show Camera Preview
-        SurfaceView preview = (SurfaceView) findViewById(R.id.camera_preview);
+        preview = (SurfaceView) findViewById(R.id.camera_preview);
 
-        // Set SurfaceView margin to reduce Blurriness.
-        RelativeLayout.LayoutParams params = new RelativeLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
-        int leftRightMargin = -(dm.widthPixels / 5);
-        int topBottomMargin = -((dm.heightPixels - titleBarHeight) / 5);
-        params.setMargins(leftRightMargin, topBottomMargin, leftRightMargin, topBottomMargin);
-        preview.setLayoutParams(params);
+//        // Set SurfaceView margin to reduce Blurriness.
+//        RelativeLayout.LayoutParams params = new RelativeLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
+//        int leftRightMargin = -(dm.widthPixels / 5);
+//        int topBottomMargin = -((dm.heightPixels - titleBarHeight) / 5);
+//        params.setMargins(leftRightMargin, topBottomMargin, leftRightMargin, topBottomMargin);
+//        preview.setLayoutParams(params);
 
         SurfaceHolder holder = preview.getHolder();
         holder.addCallback(this);
@@ -468,9 +469,12 @@ public class CameraActivity extends Activity implements
     public void onDestroy() {
 
         // finalize the scan engine.
-        if (mediaPlayer != null)
+        if (mediaPlayer != null) {
             mediaPlayer.release();
+            mediaPlayer = null;
+        }
         Runtime.getRuntime().gc();
+        mCardScanner.closeOCR(1);
 
         super.onDestroy();
         // unregister receiver.
@@ -478,22 +482,22 @@ public class CameraActivity extends Activity implements
 
     @Override
     public void onBackPressed() {
-        try {
-            if (application.getFrontimage() != null && !application.getFrontimage().isRecycled())
-                application.getFrontimage().recycle();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        try {
-            if (application.getBackimage() != null && !application.getBackimage().isRecycled())
-                application.getBackimage().recycle();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-        application.setFrontData(null);
-        application.setBackData(null);
         if (isBackPressed) {
+            try {
+                if (application.getFrontimage() != null && !application.getFrontimage().isRecycled())
+                    application.getFrontimage().recycle();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            try {
+                if (application.getBackimage() != null && !application.getBackimage().isRecycled())
+                    application.getBackimage().recycle();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+
+            application.setFrontData(null);
+            application.setBackData(null);
             super.onBackPressed();
         } else {
             Toast.makeText(CameraActivity.this, "Press again to exit app", Toast.LENGTH_SHORT).show();
@@ -663,6 +667,58 @@ public class CameraActivity extends Activity implements
         // function.
         mSurfaceHolder = holder;
 
+        // Update preview
+        // The isPreviewSet will be false then update surface view to maintain camera ratio for all device
+        if (!isPreviewSet) {
+            int widthL = width, heightL = height;
+            if (mCameraDevice != null) {
+                Camera.Size size = previewSize;
+                if (size != null) {
+                    width = size.width;
+                    height = size.height;
+                }
+            } else {
+                return;
+            }
+
+            // Swap width and height sizes when in portrait, since it will be rotated 90 degrees
+//        if (isPortraitMode()) {
+            int tmp = width;
+            width = height;
+            height = tmp;
+//        }
+
+            final int layoutWidth = widthL;
+            final int layoutHeight = heightL;
+
+            // Computes height and width for potentially doing fit width.
+            int childWidth;
+            int childHeight;
+            int childXOffset = 0;
+            int childYOffset = 0;
+            float widthRatio = (float) layoutWidth / (float) width;
+            float heightRatio = (float) layoutHeight / (float) height;
+
+            // To fill the view with the camera preview, while also preserving the correct aspect ratio,
+            // it is usually necessary to slightly oversize the child and to crop off portions along one
+            // of the dimensions.  We scale up based on the dimension requiring the most correction, and
+            // compute a crop offset for the other dimension.
+            if (widthRatio > heightRatio) {
+                childWidth = layoutWidth;
+                childHeight = (int) ((float) height * widthRatio);
+                childYOffset = (childHeight - layoutHeight) / 2;
+            } else {
+                childWidth = (int) ((float) width * heightRatio);
+                childHeight = layoutHeight;
+                childXOffset = (childWidth - layoutWidth) / 2;
+            }
+
+            RelativeLayout.LayoutParams params = new RelativeLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
+            params.setMargins(-1 * childXOffset, -1 * childYOffset, -1 * childXOffset, -1 * childYOffset);
+            preview.setLayoutParams(params);
+            isPreviewSet = true;
+        }
+
         // The mCameraDevice will be null if it fails to connect to the camera
         // hardware. In this case we will show a dialog and then finish the
         // activity, so it's OK to ignore it.
@@ -723,24 +779,11 @@ public class CameraActivity extends Activity implements
 
     @Override
     public void surfaceDestroyed(SurfaceHolder holder) {
-        // TODO Auto-generated method stub
         stopPreview();
     }
 
     @Override
-    public void onPictureTaken(byte[] data, Camera camera) {
-        // TODO Auto-generated method stub
-
-    }
-
-    @Override
-    public void onShutter() {
-        // TODO Auto-generated method stub
-    }
-
-    @Override
     public void onPreviewFrame(final byte[] data, Camera camera) {
-        // TODO Auto-generated method stub
 //		Log.e(TAG, "onPreviewFrame mPausing=" + mPausing + ", mCameraState=" + mCameraState);
 
         if (mPausing) {
@@ -779,143 +822,159 @@ public class CameraActivity extends Activity implements
                 if (bmCard != null && !bmCard.isRecycled()) {
                     bmCard.recycle();
                 }
+                int i = openCvHelper.doCheckFrame(data, width, height);
+                if (i > 0) {
+                    YuvImage temp = new YuvImage(data, format, width, height, null);
+                    ByteArrayOutputStream os = new ByteArrayOutputStream();
+                    temp.compressToJpeg(new Rect(0, 0, temp.getWidth(), temp.getHeight()), 100, os);
+                    temp = null;
+                    //getting original bitmap of scan result
+                    Bitmap bmp1 = BitmapFactory.decodeByteArray(os.toByteArray(), 0, os.toByteArray().length);
+                    Matrix matrix = new Matrix();
+                    matrix.postRotate(mDisplayOrientation);
 
-                YuvImage temp = new YuvImage(data, format, width, height, null);
-                ByteArrayOutputStream os = new ByteArrayOutputStream();
-                temp.compressToJpeg(new Rect(0, 0, temp.getWidth(), temp.getHeight()), 100, os);
-                temp = null;
-                //getting original bitmap of scan result
-                Bitmap bmp1 = BitmapFactory.decodeByteArray(os.toByteArray(), 0, os.toByteArray().length);
-                Matrix matrix = new Matrix();
-                matrix.postRotate(mDisplayOrientation);
 
+                    bmp1 = Bitmap.createBitmap(bmp1, 0, 0, bmp1.getWidth(), bmp1.getHeight(), matrix, true);
+                    matrix.reset();
 
-                bmp1 = Bitmap.createBitmap(bmp1, 0, 0, bmp1.getWidth(), bmp1.getHeight(), matrix, true);
-                matrix.reset();
+                    int totalHeight = dm.heightPixels - titleBarHeight;
+                    Point centerOfCanvas = new Point(dm.widthPixels / 2, totalHeight / 2);
+                    int left = centerOfCanvas.x - (rectW / 2);
+                    int top = centerOfCanvas.y - (rectH / 2);
+                    int right = centerOfCanvas.x + (rectW / 2);
+                    int bottom = centerOfCanvas.y + (rectH / 2);
+                    Rect frameRect = new Rect(left, top, right, bottom);
 
-                int totalHeight = dm.heightPixels - titleBarHeight;
-                Point centerOfCanvas = new Point(dm.widthPixels / 2, totalHeight / 2);
-                int left = centerOfCanvas.x - (rectW / 2);
-                int top = centerOfCanvas.y - (rectH / 2);
-                int right = centerOfCanvas.x + (rectW / 2);
-                int bottom = centerOfCanvas.y + (rectH / 2);
-                Rect frameRect = new Rect(left, top, right, bottom);
+                    float widthScaleFactor = (float) dm.widthPixels / (float) height;
+                    float heightScaleFactor = (float) (totalHeight) / (float) width;
+                    frameRect.left = (int) (frameRect.left / widthScaleFactor);
+                    frameRect.top = (int) (frameRect.top / heightScaleFactor);
+                    frameRect.right = (int) (frameRect.right / widthScaleFactor);
+                    frameRect.bottom = (int) (frameRect.bottom / heightScaleFactor);
+                    Rect finalrect = new Rect((int) (frameRect.left), (int) (frameRect.top), (int) (frameRect.right), (int) (frameRect.bottom));
 
-                float widthScaleFactor = (float) dm.widthPixels / (float) height;
-                float heightScaleFactor = (float) (totalHeight) / (float) width;
-                frameRect.left = (int) (frameRect.left / widthScaleFactor);
-                frameRect.top = (int) (frameRect.top / heightScaleFactor);
-                frameRect.right = (int) (frameRect.right / widthScaleFactor);
-                frameRect.bottom = (int) (frameRect.bottom / heightScaleFactor);
-                Rect finalrect = new Rect((int) (frameRect.left), (int) (frameRect.top), (int) (frameRect.right), (int) (frameRect.bottom));
-
-                try {
-                    if (finalrect.left >= 0 && finalrect.top >= 0 && finalrect.width() > 0 && finalrect.height() > 0) {
-                        bmCard = Bitmap.createBitmap(bmp1, finalrect.left, finalrect.top, finalrect.width(), finalrect.height());//memory leak
+                    try {
+                        if (finalrect.left >= 0 && finalrect.top >= 0 && finalrect.width() > 0 && finalrect.height() > 0) {
+                            bmCard = Bitmap.createBitmap(bmp1, finalrect.left, finalrect.top, finalrect.width(), finalrect.height());//memory leak
+                        }
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                        bmCard = null;
                     }
-                } catch (Exception e) {
-                    e.printStackTrace();
-                    bmCard = null;
-                }
 
-                bmp1.recycle();
+                    bmp1.recycle();
 
-                _mutex.lock();
-                if (bmCard != null) {
-                    if (!isfront) {
-                        if (mRecCnt > 3) {
-                            frameData = openCvHelper.nativeCheckCardIsInFrame(CameraActivity.this, bmCard, doblurcheck);
+                    _mutex.lock();
+                    if (bmCard != null) {
+                        if (!isfront) {
+                            if (mRecCnt > 3) {
+                                frameData = openCvHelper.nativeCheckCardIsInFrame(bmCard, doblurcheck);
 
-                            if (frameData != null && frameData.accuraOCR.equals(OpenCvHelper.AccuraOCR.SUCCESS)) {
-                                runOnUiThread(new Runnable() {
-                                    @Override
-                                    public void run() {
-                                        showToast("Processing...");
+                                if (frameData != null && frameData.accuraOCR.equals(OpenCvHelper.AccuraOCR.SUCCESS)) {
+                                    Bitmap docBmp = bmCard.copy(Bitmap.Config.ARGB_8888, false);
+                                    int width = docBmp.getWidth();
+                                    int height = docBmp.getHeight();
+                                    float ratio = width / height;
+
+    //                                Log.v("Pictures", "Width and height are " + width + "--" + height);
+
+                                    if (width > height) {
+                                        // landscape
+
+                                        if (ratio > 1.8 || ratio < 1.6) {
+                                            height = (int) (width / 1.69);
+                                        }
                                     }
-                                });
-                                Bitmap docBmp = bmCard.copy(Bitmap.Config.ARGB_8888, false);
-                                int width = docBmp.getWidth();
-                                int height = docBmp.getHeight();
-                                float ratio = width / height;
+                                    docBmp = Bitmap.createScaledBitmap(docBmp, width, height, false);
+                                    ret = mCardScanner.doRunData(docBmp, 0, mDisplayRotation, RecogEngine.g_recogResult);
 
-//                                Log.v("Pictures", "Width and height are " + width + "--" + height);
-
-                                if (width > height) {
-                                    // landscape
-
-                                    if (ratio > 1.8 || ratio < 1.6) {
-                                        height = (int) (width / 1.69);
+                                    if (ret > 0) {
+                                        gotmrz = 0;
                                     }
-                                }
-                                docBmp = Bitmap.createScaledBitmap(docBmp, width, height, false);
-                                ret = mCardScanner.doRunData(docBmp, 0, mDisplayRotation, RecogEngine.g_recogResult);
-
-                                if (ret > 0) {
-                                    gotmrz = 0;
                                 }
                             }
-                        }
-                        mRecCnt++;
-                    } else
-                        frameData = openCvHelper.nativeCheckCardIsInFrame(CameraActivity.this, bmCard, doblurcheck);
-                }
+                            mRecCnt++;
+                        } else
+                            frameData = openCvHelper.nativeCheckCardIsInFrame(bmCard, doblurcheck);
+                    }
 
-                _mutex.unlock();
+                    _mutex.unlock();
 
-                if (bmCard != null) {
-                    CameraActivity.this.runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            if (!isDone) {
-                                if (!isfront && gotmrz == 0 && (frameData.finalData == null || !frameData.accuraOCR.equals(OpenCvHelper.AccuraOCR.SUCCESS))) {
-                                    Bitmap docBmp = bmCard;
-                                    if (AfterMapping(application.getBackData()/*mrzData*/, docBmp.copy(Bitmap.Config.ARGB_8888, false))) {
-                                        try {
-                                            docBmp.recycle();
-                                        } catch (Exception e) {
-                                            e.printStackTrace();
-                                        }
-                                        showResultActivity();
-                                    } else {
-                                        Log.d(TAG, "failed");
-                                        try {
-                                            docBmp.recycle();
-                                        } catch (Exception e) {
-                                            e.printStackTrace();
-                                        }
-                                        if (!mPausing && mCameraDevice != null) {
-                                            mCameraDevice.setOneShotPreviewCallback(CameraActivity.this);
-                                        }
+                    if (bmCard != null) {
+                        CameraActivity.this.runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                if (!isDone) {
+                                    if (!isfront && gotmrz == 0 && (frameData.finalData == null || !frameData.accuraOCR.equals(OpenCvHelper.AccuraOCR.SUCCESS))) {
+                                        Bitmap docBmp = bmCard;
+                                        if (AfterMapping(application.getBackData()/*mrzData*/, docBmp.copy(Bitmap.Config.ARGB_8888, false))) {
+                                            try {
+                                                docBmp.recycle();
+                                            } catch (Exception e) {
+                                                e.printStackTrace();
+                                            }
+                                            showResultActivity();
+                                        } else {
+                                            Log.d(TAG, "failed");
+                                            try {
+                                                docBmp.recycle();
+                                            } catch (Exception e) {
+                                                e.printStackTrace();
+                                            }
+                                            if (!mPausing && mCameraDevice != null) {
+                                                mCameraDevice.setOneShotPreviewCallback(CameraActivity.this);
+                                            }
 
-                                        mHandler.sendMessageDelayed(
-                                                mHandler.obtainMessage(TRIGER_RESTART_RECOG),
-                                                TRIGER_RESTART_RECOG_DELAY);
+                                            mHandler.sendMessageDelayed(
+                                                    mHandler.obtainMessage(TRIGER_RESTART_RECOG),
+                                                    TRIGER_RESTART_RECOG_DELAY);
+                                        }
                                     }
-                                }
-                                if (frameData != null && frameData.accuraOCR.equals(OpenCvHelper.AccuraOCR.SUCCESS)) {
-                                    Bitmap docBmp = bmCard;
-                                    if (!frameData.rect.isEmpty() && frameData.rect.contains(",")) {
-                                        docBmp = frameData.getBitmap();
-                                        if (docBmp == null) {
-                                            String[] reststring = frameData.rect.split(",");
-                                            if (reststring.length == 4) {
-                                                Rect rect = new Rect(Integer.valueOf(reststring[0]), Integer.valueOf(reststring[1]), Integer.valueOf(reststring[2]), Integer.valueOf(reststring[3]));
-                                                docBmp = Bitmap.createBitmap(docBmp, rect.left, rect.top, rect.width(), rect.height());//memory leak
+                                    if (frameData != null && frameData.accuraOCR.equals(OpenCvHelper.AccuraOCR.SUCCESS)) {
+                                        Bitmap docBmp = bmCard;
+                                        if (!frameData.rect.isEmpty() && frameData.rect.contains(",")) {
+                                            docBmp = frameData.getBitmap();
+                                            if (docBmp == null) {
+                                                String[] reststring = frameData.rect.split(",");
+                                                if (reststring.length == 4) {
+                                                    Rect rect = new Rect(Integer.valueOf(reststring[0]), Integer.valueOf(reststring[1]), Integer.valueOf(reststring[2]), Integer.valueOf(reststring[3]));
+                                                    docBmp = Bitmap.createBitmap(docBmp, rect.left, rect.top, rect.width(), rect.height());//memory leak
+                                                }
                                             }
                                         }
-                                    }
-                                    if (AfterMapping(frameData.finalData, docBmp.copy(Bitmap.Config.ARGB_8888, false))) {
-                                        try {
-                                            docBmp.recycle();
-                                        } catch (Exception e) {
-                                            e.printStackTrace();
+                                        if (AfterMapping(frameData.finalData, docBmp.copy(Bitmap.Config.ARGB_8888, false))) {
+                                            try {
+                                                docBmp.recycle();
+                                            } catch (Exception e) {
+                                                e.printStackTrace();
+                                            }
+                                            showResultActivity();
+                                        } else {
+                                            Log.d(TAG, "failed");
+
+                                            try {
+                                                docBmp.recycle();
+                                            } catch (Exception e) {
+                                                e.printStackTrace();
+                                            }
+
+                                            if (!mPausing && mCameraDevice != null) {
+                                                mCameraDevice.setOneShotPreviewCallback(CameraActivity.this);
+                                            }
+
+                                            mHandler.sendMessageDelayed(
+                                                    mHandler.obtainMessage(TRIGER_RESTART_RECOG),
+                                                    TRIGER_RESTART_RECOG_DELAY);
                                         }
-                                        showResultActivity();
                                     } else {
                                         Log.d(TAG, "failed");
 
+                                        if (isDone) {
+                                            return;
+                                        }
+
                                         try {
-                                            docBmp.recycle();
+                                            bmCard.recycle();
                                         } catch (Exception e) {
                                             e.printStackTrace();
                                         }
@@ -928,31 +987,19 @@ public class CameraActivity extends Activity implements
                                                 mHandler.obtainMessage(TRIGER_RESTART_RECOG),
                                                 TRIGER_RESTART_RECOG_DELAY);
                                     }
-                                } else {
-                                    Log.d(TAG, "failed");
-
-                                    if (isDone) {
-                                        return;
-                                    }
-
-                                    try {
-                                        bmCard.recycle();
-                                    } catch (Exception e) {
-                                        e.printStackTrace();
-                                    }
-
-                                    if (!mPausing && mCameraDevice != null) {
-                                        mCameraDevice.setOneShotPreviewCallback(CameraActivity.this);
-                                    }
-
-                                    mHandler.sendMessageDelayed(
-                                            mHandler.obtainMessage(TRIGER_RESTART_RECOG),
-                                            TRIGER_RESTART_RECOG_DELAY);
                                 }
                             }
-                        }
 
-                    });
+                        });
+                    }
+                } else if (i==0){
+                    if (!mPausing && mCameraDevice != null) {
+                        mCameraDevice.setOneShotPreviewCallback(CameraActivity.this);
+                    }
+
+                    mHandler.sendMessageDelayed(
+                            mHandler.obtainMessage(TRIGER_RESTART_RECOG),
+                            TRIGER_RESTART_RECOG_DELAY);
                 }
             }
 
@@ -1087,39 +1134,6 @@ public class CameraActivity extends Activity implements
         setTemplateFirst(cardside, -1);
     }
 
-    public void showToast(final String msg) {
-        if (!isFinishing()) {
-            if (isfront) {
-                if (msg.contains("Blur detected over face")) {
-                    if (!isTouchCalled && mParameters != null) {
-                        String focusMode = mParameters.getFocusMode();
-                        if (focusMode == null || Camera.Parameters.FOCUS_MODE_INFINITY.equals(focusMode)) {
-                            return;
-                        }
-
-                        //                    if (e.getAction() == MotionEvent.ACTION_UP) {
-                        isTouchCalled = true;
-                        autoFocus();
-//                        setCameraState(IDLE);
-
-                        //                    }
-
-                    }
-                }
-            }
-
-//            Runnable runnable = new Runnable() {
-//                public void run() {
-            mScanMsg.setText(msg);
-//                }
-//            };
-//            runOnUiThread(runnable);
-//                drawOverlay();
-//            }
-//            }
-        }
-    }
-
     ObjectAnimator anim = null;
 
     //flip the image
@@ -1243,6 +1257,8 @@ public class CameraActivity extends Activity implements
         if (LOGV)
             Log.e(TAG, "Preview size is " + optimalSize.width + "x"
                     + optimalSize.height);
+
+        previewSize = optimalSize;
 
         String previewSize = "";
         previewSize = "[" + optimalSize.width + "x" + optimalSize.height + "]";
@@ -1374,7 +1390,6 @@ public class CameraActivity extends Activity implements
 
     @Override
     public void cancelAutoFocus() {
-        // TODO Auto-generated method stub
         mCameraDevice.cancelAutoFocus();
         if (mCameraState != SELFTIMER_COUNTING
                 && mCameraState != SNAPSHOT_IN_PROGRESS) {
@@ -1397,13 +1412,11 @@ public class CameraActivity extends Activity implements
 
     @Override
     public void setFocusParameters() {
-        // TODO Auto-generated method stub
         setCameraParameters(UPDATE_PARAM_PREFERENCE);
     }
 
     @Override
     public void playSound(int soundId) {
-        // TODO Auto-generated method stub
 
     }
 
@@ -1460,15 +1473,10 @@ public class CameraActivity extends Activity implements
 
     void playEffect() {
         if (audioManager != null)
-            audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC), 0);
-        mediaPlayer.start();
-        mediaPlayer.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
-            @Override
-            public void onCompletion(MediaPlayer mediaPlayer1) {
-                //mediaPlayer.stop();
-                //mediaPlayer.release();
-            }
-        });
+            audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, audioManager.getStreamVolume(AudioManager.STREAM_MUSIC), 0);
+        if (mediaPlayer != null) {
+            mediaPlayer.start();
+        }
     }
 
     //requesting the camera permission
@@ -1517,17 +1525,38 @@ public class CameraActivity extends Activity implements
         }
     }
 
+    String newMessage = "";
+    private int isContinue = 0;
+
     @Override
     public void onUpdateProcess(final String s) {
-//        showToast(s);
-        Runnable runnable = new Runnable() {
-            public void run() {
-                if (!isFinishing()) {
-                    mScanMsg.setText(s);
+        if (!s.isEmpty()) {
+            if (newMessage.equals(s))
+                return;
+            newMessage = s;
+            Runnable runnable1 = new Runnable() {
+                public void run() {
+                    if (!isFinishing()) {
+                        mScanMsg.setText(s);
+                    }
                 }
+            };
+            runOnUiThread(runnable1);
+            if (!s.equals("Processing") && isContinue == 0) {
+                isContinue = 1;
+                final Runnable runnable = () -> {
+                    try {
+                        newMessage = "";
+                        mScanMsg.setText("");
+                        isContinue = 0;
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                };
+                Runnable runnable2 = () -> new Handler().postDelayed(runnable, 1500);
+                runOnUiThread(runnable2);
             }
-        };
-        runOnUiThread(runnable);
+        }
     }
 
     private class MainHandler extends Handler {
