@@ -15,6 +15,7 @@ import android.view.WindowManager;
 import android.widget.Toast;
 
 import com.docrecog.scan.CameraActivity;
+import com.docrecog.scan.FragmentCameraActivity;
 import com.docrecog.scan.Util;
 
 public class MainActivity extends AppCompatActivity {
@@ -39,7 +40,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void nextActivity() {
-        startActivity(new Intent(MainActivity.this, CameraActivity.class).setFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION));
+        startActivity(new Intent(MainActivity.this, FragmentCameraActivity.class).setFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION));
         overridePendingTransition(0, 0);
         MainActivity.this.finish();
     }

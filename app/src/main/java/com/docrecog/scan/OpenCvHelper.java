@@ -1,10 +1,7 @@
 package com.docrecog.scan;
 
-import android.app.Activity;
 import android.content.Context;
 import android.graphics.Bitmap;
-import android.os.Handler;
-import android.util.Log;
 
 import com.accurascan.accuraemirates.motiondetection.data.GlobalData;
 
@@ -31,13 +28,8 @@ public class OpenCvHelper {
 
     }
 
-    public OpenCvHelper(Context context) {
-        if (context instanceof OCRCallback) {
-            this.ocrCallback = (OCRCallback) context;
-        } else {
-            throw new RuntimeException(context.toString()
-                    + " must have to implement" + OCRCallback.class.getName());
-        }
+    public OpenCvHelper(OCRCallback ocrCallback) {
+         this.ocrCallback = ocrCallback;
     }
 
     public ImageOpencv nativeCheckCardIsInFrame(Bitmap bmp, boolean doblurcheck) {

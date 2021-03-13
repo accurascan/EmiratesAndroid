@@ -8,6 +8,8 @@ import android.hardware.SensorManager;
 import android.os.Bundle;
 import android.util.Log;
 
+import androidx.appcompat.app.AppCompatActivity;
+
 import com.accurascan.accuraemirates.motiondetection.data.GlobalData;
 
 import java.util.List;
@@ -16,11 +18,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * This class extends Activity and processes sensor data and location data. It
- * is used to detect when the phone is in motion, so we do not try to detect
- * motion.
+ * is used to detect when the phone is in motion.
  *
  */
-public class SensorsActivity extends Activity implements SensorEventListener {
+public class SensorsActivity extends AppCompatActivity implements SensorEventListener {
 
     private static final String TAG = "SensorsActivity";
     private static final AtomicBoolean computing = new AtomicBoolean(false);
@@ -45,25 +46,6 @@ public class SensorsActivity extends Activity implements SensorEventListener {
     private static float prevGrav = 0.0f;
     private static float prevMag = 0.0f;
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void onDestroy() {
-        super.onDestroy();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public void onStart() {
         super.onStart();
@@ -92,9 +74,6 @@ public class SensorsActivity extends Activity implements SensorEventListener {
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public void onStop() {
         super.onStop();
@@ -116,9 +95,6 @@ public class SensorsActivity extends Activity implements SensorEventListener {
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public void onSensorChanged(SensorEvent evt) {
         if (!computing.compareAndSet(false, true)) return;
