@@ -338,6 +338,7 @@ public class CameraFragment extends Fragment  implements
         if (mCardScanner == null) {
             mCardScanner = new RecogEngine();
             mCardScanner.initEngine(getActivity(), mActivity);
+            mCardScanner.setFilter(); // To manage filter config
         }
         mContext = getActivity();
         openCvHelper = new OpenCvHelper(CameraFragment.this); // 20210311 add context to constructor

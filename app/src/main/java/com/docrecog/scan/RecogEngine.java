@@ -53,6 +53,54 @@ public class RecogEngine {
 
     private native static PrimaryData setPrimaryData(Context /* OCRCallback*/ context, AssetManager assetManager, String filepath, long l, String card_side, int card_pos);
 
+    /**
+     * Set Blur Percentage to allow blur on document
+     *
+     * @param blurPercentage is 0 to 100, 0 to accept clean document and 100 to accept blurry document
+     * @return 1 if success else 0
+     */
+    public native int setBlurPercentage(int blurPercentage);
+
+    /**
+     * Set Blur Percentage to allow blur on detected Face
+     *
+     * @param faceBlurPercentage is 0 to 100, 0 to accept clean face and 100 to accept blurry face.
+     * @return 1 if success else 0
+     */
+    public native int setFaceBlurPercentage(int faceBlurPercentage);
+
+    /**
+     * @param minPercentage Min value
+     * @param maxPercentage Max value
+     * @return 1 if success else 0
+     */
+    public native int setGlarePercentage(int minPercentage, int maxPercentage);
+
+    /**
+     * set Hologram detection to allow hologram on face or not
+     *
+     * @param isDetectHologram if true then reject frame if hologram is on face else it is allow document to scan.
+     * @return 1 if success else 0
+     */
+    public native int setHologramDetection(boolean isDetectHologram);
+
+    /**
+     * set light tolerance to detect light on document if low light
+     *
+     * @param tolerance is 0 to 100, 0 to accept full dark document and 100 to accept full bright document
+     * @return 1 if success else 0
+     */
+    public native int setLowLightTolerance(int tolerance);
+
+    /**
+     * set motion threshold to detect motion on camera document
+     *
+     * @param motionThreshold is 1 to 100, 1 means it allows 1% motion on document and 100 means it
+     *                            can not detect motion and allow document to scan.
+     * @return 1 if success else 0
+     */
+    public native int setMotionThreshold(int motionThreshold);
+
     public native int closeOCR(int i);
 
     public static float[] fConf = new float[1]; //face detection confidence
@@ -293,6 +341,19 @@ public class RecogEngine {
 //            result.bRecDone = true;
 
         return ret;
+    }
+
+    /**
+     * Make sure to call this function after initialized engine {@link #initEngine(Context, Activity)}
+     * Update data according to requirement
+     */
+    public void setFilter() {
+        setBlurPercentage(40);
+        setFaceBlurPercentage(45);
+        setGlarePercentage(5,99);
+        setLowLightTolerance(39);
+        setHologramDetection(true);
+        setMotionThreshold(15);
     }
 
 }

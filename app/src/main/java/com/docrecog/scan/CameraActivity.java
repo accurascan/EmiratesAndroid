@@ -350,6 +350,7 @@ public class CameraActivity extends SensorsActivity implements
         if (mCardScanner == null) {
             mCardScanner = new RecogEngine();
             mCardScanner.initEngine(this, this);
+            mCardScanner.setFilter(); // To manage filter config
         }
         mContext = this;
         openCvHelper = new OpenCvHelper(this);
